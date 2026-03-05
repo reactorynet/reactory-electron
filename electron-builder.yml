@@ -1,0 +1,113 @@
+# -----------------------------------------------------------
+# Reactory Desktop — electron-builder configuration
+# -----------------------------------------------------------
+appId: net.reactory.desktop
+productName: Reactory Desktop
+copyright: Copyright © 2026 Reactory
+
+directories:
+  buildResources: resources
+  output: release
+
+files:
+  - dist/**/*
+  - "!dist/server/node_modules/**/*"  # server deps go into extraResources
+
+# ── Extra resources bundled alongside the app ──
+extraResources:
+  # Compiled Express server (built JS + production node_modules)
+  - from: build/server
+    to: server
+    filter:
+      - "**/*"
+      - "!**/node_modules/.cache/**"
+
+  # Minimal reactory-data bundle
+  - from: build/reactory-data
+    to: reactory-data
+    filter:
+      - "**/*"
+
+  # Pre-built PWA client
+  - from: build/client
+    to: client
+    filter:
+      - "**/*"
+
+  # Platform-specific mongod binary (added per-platform below)
+
+# ── macOS ──
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: resources/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  extraResources:
+    - from: resources/mongodb/mac/${arch}
+      to: mongodb
+      filter:
+        - mongod
+  darkModeSupport: true
+
+dmg:
+  artifactName: "${productName}-${version}-${arch}.dmg"
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ── Windows ──
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  extraResources:
+    - from: resources/mongodb/win/x64
+      to: mongodb
+      filter:
+        - mongod.exe
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  artifactName: "${productName}-Setup-${version}.exe"
+
+# ── Linux ──
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: resources/icons
+  category: Development
+  extraResources:
+    - from: resources/mongodb/linux/x64
+      to: mongodb
+      filter:
+        - mongod
+
+appImage:
+  artifactName: "${productName}-${version}-${arch}.AppImage"
+
+# ── Auto-update ──
+publish:
+  provider: generic
+  url: https://releases.reactory.net/desktop

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+release/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Electron
+*.dmg
+*.exe
+*.AppImage
+*.snap
+*.deb
+*.rpm
+
+# MongoDB data (local dev)
+mongodb-data/
+
+# Logs
+*.log
+logs/
+
+# Resources (platform binaries are large; download during CI)
+resources/mongodb/

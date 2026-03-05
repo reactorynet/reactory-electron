@@ -1,0 +1,42 @@
+{
+  "name": "@reactorynet/reactory-electron",
+  "version": "1.0.0",
+  "description": "Reactory Desktop — self-contained Electron wrapper for the Reactory platform",
+  "main": "dist/main/index.js",
+  "author": "Reactory <reactory@reactory.net>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "build": "tsx scripts/build-all.ts",
+    "build:main": "tsup",
+    "build:server": "bash scripts/build-server.sh",
+    "build:client": "bash scripts/build-client.sh",
+    "build:data": "bash scripts/bundle-data.sh",
+    "start": "electron dist/main/index.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "electron-log": "^5.2.4",
+    "mongodb-memory-server-core": "^10.4.0",
+    "get-port": "^5.1.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.3",
+    "@types/node": "^20.14.10"
+  },
+  "build": {
+    "extends": "electron-builder.yml"
+  }
+}

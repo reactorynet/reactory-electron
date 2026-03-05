@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Allow JIT for Node.js / V8 -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Allow unsigned in-memory execution (for mongod) -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- Network client (for HTTP requests) -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- Network server (for Express + MongoDB) -->
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <!-- File access: read-write to user data -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+</dict>
+</plist>
