@@ -116,7 +116,7 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
       // Override server settings
       API_PORT: String(apiPort),
       API_URI_ROOT: `http://localhost:${apiPort}`,
-      CDN_ROOT: `http://localhost:${apiPort}/cdn/`,
+      CDN_ROOT: `http://localhost:${apiPort}/cdn`,
 
       // Data paths (use existing workspace paths in dev)
       APP_DATA_ROOT: dataRoot,
@@ -160,7 +160,7 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     // ── Server ──
     API_PORT: String(apiPort),
     API_URI_ROOT: `http://localhost:${apiPort}`,
-    CDN_ROOT: `http://localhost:${apiPort}/cdn/`,
+    CDN_ROOT: `http://localhost:${apiPort}/cdn`,
     SERVER_ID: 'reactory-desktop',
     DOMAIN_NAME: 'localhost',
     MAX_FILE_UPLOAD: '50mb',
