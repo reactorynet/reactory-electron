@@ -13,6 +13,7 @@ import crypto from 'crypto';
 export interface EnvOptions {
   mongoUri: string;
   apiPort: number;
+  clientPort: number;
   dataRoot: string;
   clientBuildPath: string;
   isPackaged: boolean;
@@ -79,7 +80,7 @@ function readDotEnv(filePath: string): Record<string, string> {
  * In packaged mode: builds the full env from scratch.
  */
 export function resolveEnv(opts: EnvOptions): Record<string, string> {
-  const { mongoUri, apiPort, dataRoot, clientBuildPath, isPackaged, serverPath } = opts;
+  const { mongoUri, apiPort, clientPort, dataRoot, clientBuildPath, isPackaged, serverPath } = opts;
   const userDataPath = PATHS.userData || app.getPath('userData');
   const secret = getOrCreateSecret(userDataPath);
 
@@ -120,9 +121,18 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
       // Data paths (use existing workspace paths in dev)
       APP_DATA_ROOT: dataRoot,
 
-      // Client serving
+      // Client serving — the PWA client runs on its own port
       ELECTRON_CLIENT_BUILD_PATH: clientBuildPath,
-      REACTORY_CLIENT_URL: `http://localhost:${apiPort}`,
+      REACTORY_CLIENT_URL: `http://localhost:${clientPort}`,
+      // Ensure both client port and API port are in the CORS whitelist.
+      // The .env.local whitelist is also merged in via baseEnv, but we
+      // add these explicitly to guarantee they're present.
+      REACTORY_APP_WHITELIST: [
+        `http://localhost:${clientPort}`,
+        `http://localhost:${apiPort}`,
+        `http://localhost:${apiPort}/`,
+        'https://studio.apollographql.com',
+      ].join(','),
 
       // Session (use memory store in dev to avoid extra dependencies)
       // REACTORY_SESSION_STORE not set = default MemoryStore
@@ -162,8 +172,12 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
 
     // ── Client serving ──
     ELECTRON_CLIENT_BUILD_PATH: clientBuildPath,
-    REACTORY_CLIENT_URL: `http://localhost:${apiPort}`,
-    REACTORY_APP_WHITELIST: `http://localhost:${apiPort}`,
+    REACTORY_CLIENT_URL: `http://localhost:${clientPort}`,
+    REACTORY_APP_WHITELIST: [
+      `http://localhost:${clientPort}`,
+      `http://localhost:${apiPort}`,
+      `http://localhost:${apiPort}/`,
+    ].join(','),
 
     // ── Authentication ──
     REACTORY_CLIENT_KEY: 'reactory',

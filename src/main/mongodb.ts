@@ -5,7 +5,7 @@
  * binary ships as an extraResource. In development, it falls back to
  * mongodb-memory-server which downloads a binary automatically.
  */
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, execSync, spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
@@ -34,6 +34,48 @@ async function isPortAvailable(port: number): Promise<boolean> {
     });
     server.listen(port, '127.0.0.1');
   });
+}
+
+/**
+ * Find and kill any process occupying the given port.
+ * Sends SIGTERM first, then SIGKILL after 3 seconds.
+ */
+async function killProcessOnPort(port: number): Promise<void> {
+  try {
+    // lsof is available on macOS/Linux; on Windows use netstat approach
+    const pids = execSync(`lsof -ti:${port} 2>/dev/null || true`)
+      .toString()
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (pids.length === 0) return;
+
+    log.info(`Found stale process(es) on port ${port}: ${pids.join(', ')} — killing…`);
+    for (const pid of pids) {
+      try {
+        process.kill(Number(pid), 'SIGTERM');
+      } catch {
+        // Already gone
+      }
+    }
+
+    // Give them 3 s to exit, then SIGKILL
+    await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+
+    for (const pid of pids) {
+      try {
+        process.kill(Number(pid), 'SIGKILL');
+      } catch {
+        // Already gone — that's fine
+      }
+    }
+
+    // Brief pause to let the OS release the port
+    await new Promise<void>((r) => setTimeout(r, 500));
+  } catch (err) {
+    log.warn(`Could not kill process on port ${port}:`, err);
+  }
 }
 
 /**
@@ -133,6 +175,24 @@ export class MongoManager {
    * Use mongodb-memory-server for development.
    */
   private async startMemoryServer(): Promise<string> {
+    const { port, dbPath, dbName } = this.opts;
+
+    // Same port-conflict guard as the bundled-mongod path
+    const portFree = await isPortAvailable(port);
+    if (!portFree) {
+      log.warn(`Port ${port} already occupied — attempting to terminate stale process…`);
+      await killProcessOnPort(port);
+
+      // Re-check after kill attempt
+      const freeAfterKill = await isPortAvailable(port);
+      if (!freeAfterKill) {
+        // Fall back: assume an external MongoDB we can reuse
+        log.warn(`Port ${port} still in use after kill — assuming reusable external MongoDB`);
+        this.running = true;
+        return `mongodb://127.0.0.1:${port}/${dbName}`;
+      }
+    }
+
     const { MongoMemoryServer } = await import('mongodb-memory-server-core');
 
     this.memoryServer = await MongoMemoryServer.create({

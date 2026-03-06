@@ -4,9 +4,9 @@
  * Boot sequence:
  *   1. Show splash window
  *   2. Start embedded MongoDB (or connect to external)
- *   3. Compile environment & start the Express server
- *   4. Express serves the pre-built PWA client + API
- *   5. Open main BrowserWindow pointing at http://localhost:<port>
+ *   3. Compile environment & start the Express API server
+ *   4. Start the static client server for the PWA build
+ *   5. Open main BrowserWindow pointing at the client server
  *   6. Hide splash, show main window
  */
 import path from 'path';
@@ -15,10 +15,12 @@ import log from 'electron-log/main';
 import { JsonStore } from './store';
 import { MongoManager } from './mongodb';
 import { ReactoryServerManager } from './server';
+import { ClientServer } from './client-server';
 import { createSplashWindow, closeSplash } from './splash';
 import { createTray } from './tray';
 import { setupAutoUpdater } from './updater';
 import { resolveEnv, PATHS } from './env';
+import { buildMenu } from './menu';
 
 // ── Logging ────────────────────────────────────────────────
 log.initialize();
@@ -33,6 +35,7 @@ export const store = new JsonStore();
 let mainWindow: BrowserWindow | null = null;
 let mongoManager: MongoManager | null = null;
 let serverManager: ReactoryServerManager | null = null;
+let clientServer: ClientServer | null = null;
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -45,7 +48,7 @@ const DEV_RESOURCE_MAP: Record<string, string | undefined> = {
   server: process.env.REACTORY_SERVER,
   'reactory-data': process.env.REACTORY_DATA,
   client: process.env.REACTORY_CLIENT
-    ? path.join(process.env.REACTORY_CLIENT, 'build', 'reactory', 'local')
+    ? path.join(process.env.REACTORY_CLIENT, 'build', 'reactory', 'electron')
     : undefined,
 };
 
@@ -85,10 +88,13 @@ function createMainWindow(port: number): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      devTools: true,
     },
   });
 
-  win.loadURL(`http://localhost:${port}`);
+  const url = `http://localhost:${port}`;
+  log.info(`Loading client from ${url}`);
+  win.loadURL(url);
 
   win.on('ready-to-show', () => {
     closeSplash();
@@ -137,30 +143,43 @@ async function boot(): Promise<void> {
     // ── Step 2: Environment ──
     splash.webContents.send('splash:status', 'Preparing environment…');
     const apiPort = store.get('apiPort');
+    const clientPort = store.get('clientPort');
     const serverPath = getResourcePath('server');
     const env = resolveEnv({
       mongoUri,
       apiPort,
+      clientPort,
       dataRoot: getResourcePath('reactory-data'),
       clientBuildPath: getResourcePath('client'),
       isPackaged: app.isPackaged,
       serverPath,
     });
 
-    // ── Step 3: Start Express Server ──
-    splash.webContents.send('splash:status', 'Starting server…');
+    // ── Step 3: Start Express API Server ──
+    splash.webContents.send('splash:status', 'Starting API server…');
     serverManager = new ReactoryServerManager({
       serverPath,
       env,
     });
     await serverManager.start();
-    log.info(`Reactory Server running on port ${apiPort}`);
+    log.info(`Reactory API server running on port ${apiPort}`);
 
-    // ── Step 4: Create main window ──
+    // ── Step 4: Start Client Server ──
+    splash.webContents.send('splash:status', 'Starting client…');
+    const clientBuildPath = getResourcePath('client');
+    clientServer = new ClientServer({
+      clientBuildPath,
+      port: clientPort,
+      apiPort,
+    });
+    await clientServer.start();
+    log.info(`Client server running on port ${clientPort} (serving ${clientBuildPath})`);
+
+    // ── Step 5: Create main window ──
     splash.webContents.send('splash:status', 'Loading application…');
-    mainWindow = createMainWindow(apiPort);
+    mainWindow = createMainWindow(clientPort);
 
-    // ── Step 5: System tray + auto-update ──
+    // ── Step 6: System tray + auto-update ──
     createTray(mainWindow, apiPort);
     if (app.isPackaged) {
       setupAutoUpdater(mainWindow);
@@ -181,12 +200,45 @@ async function boot(): Promise<void> {
 
 // ── App Lifecycle ──────────────────────────────────────────
 
-app.whenReady().then(boot);
+/** Prevents the shutdown routine from running twice. */
+let isQuitting = false;
+
+/**
+ * Shared, idempotent cleanup — stops all child services in order.
+ * Called from both the 'before-quit' event and SIGINT/SIGTERM handlers.
+ */
+async function shutdown(): Promise<void> {
+  if (isQuitting) return;
+  isQuitting = true;
+  log.info('Shutdown initiated…');
+
+  if (clientServer?.isRunning()) {
+    try { await clientServer.stop(); log.info('Client server stopped'); }
+    catch (err) { log.error('Error stopping client server:', err); }
+  }
+
+  if (serverManager?.isRunning()) {
+    try { await serverManager.stop(); log.info('Express server stopped'); }
+    catch (err) { log.error('Error stopping API server:', err); }
+  }
+
+  if (mongoManager?.isRunning()) {
+    try { await mongoManager.stop(); log.info('MongoDB stopped'); }
+    catch (err) { log.error('Error stopping MongoDB:', err); }
+  }
+
+  log.info('Shutdown complete');
+}
+
+app.whenReady().then(() => {
+  buildMenu(!app.isPackaged);
+  boot();
+});
 
 app.on('activate', () => {
   // macOS: re-create window when dock icon is clicked
   if (BrowserWindow.getAllWindows().length === 0 && serverManager?.isRunning()) {
-    const port = store.get('apiPort');
+    const port = store.get('clientPort');
     mainWindow = createMainWindow(port);
   }
 });
@@ -198,29 +250,21 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', async (event) => {
-  log.info('Shutting down…');
+app.on('before-quit', (event) => {
+  if (isQuitting) return; // already in shutdown path — let Electron proceed
 
-  // Stop Express server
-  if (serverManager?.isRunning()) {
-    try {
-      await serverManager.stop();
-      log.info('Express server stopped');
-    } catch (err) {
-      log.error('Error stopping server:', err);
-    }
-  }
-
-  // Stop embedded MongoDB
-  if (mongoManager?.isRunning()) {
-    try {
-      await mongoManager.stop();
-      log.info('MongoDB stopped');
-    } catch (err) {
-      log.error('Error stopping MongoDB:', err);
-    }
-  }
+  // Prevent immediate exit; run async cleanup first then re-trigger quit
+  event.preventDefault();
+  shutdown().finally(() => app.exit(0));
 });
+
+// Handle Ctrl+C / kill in the Electron main process (dev mode terminal)
+for (const sig of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(sig, () => {
+    log.info(`Received ${sig} — initiating clean shutdown`);
+    shutdown().finally(() => process.exit(0));
+  });
+}
 
 // ── IPC Handlers ───────────────────────────────────────────
 

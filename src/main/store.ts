@@ -11,6 +11,7 @@ import { app } from 'electron';
 export interface StoreSchema {
   mongoUri: string | null;
   apiPort: number;
+  clientPort: number;
   useEmbeddedMongo: boolean;
   windowBounds: { width: number; height: number; x?: number; y?: number } | null;
 }
@@ -18,6 +19,7 @@ export interface StoreSchema {
 const DEFAULTS: StoreSchema = {
   mongoUri: null,
   apiPort: 4000,
+  clientPort: 3000,
   useEmbeddedMongo: true,
   windowBounds: null,
 };
