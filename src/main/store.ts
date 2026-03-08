@@ -14,6 +14,12 @@ export interface StoreSchema {
   clientPort: number;
   useEmbeddedMongo: boolean;
   windowBounds: { width: number; height: number; x?: number; y?: number } | null;
+  /** Server configuration key — determines modules, enabled clients, env file */
+  serverConfigId: string;
+  /** Client configuration key — determines which PWA build and env to use */
+  clientConfigId: string;
+  /** Theme key — usually matches clientConfigId but can be overridden */
+  themeId: string;
 }
 
 const DEFAULTS: StoreSchema = {
@@ -22,6 +28,9 @@ const DEFAULTS: StoreSchema = {
   clientPort: 3000,
   useEmbeddedMongo: true,
   windowBounds: null,
+  serverConfigId: 'reactory',
+  clientConfigId: 'reactory',
+  themeId: 'reactory',
 };
 
 export class JsonStore {

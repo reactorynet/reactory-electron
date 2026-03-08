@@ -8,36 +8,45 @@
  *   - View logs
  *   - Quit the app
  */
-import { Tray, Menu, BrowserWindow, shell, nativeImage, app } from 'electron';
+import { Tray, Menu, BrowserWindow, shell, nativeImage, NativeImage, app } from 'electron';
 import path from 'path';
 import log from 'electron-log/main';
+import type { ResolvedTheme } from './theme';
+import { createTrayIcon } from './theme';
 
 let tray: Tray | null = null;
 
-export function createTray(mainWindow: BrowserWindow, apiPort: number): Tray {
-  // Use a template image on macOS for proper dark/light mode support
-  const iconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'icon.png')
-    : path.join(__dirname, '..', '..', 'resources', 'icon.png');
+export function createTray(
+  mainWindow: BrowserWindow,
+  apiPort: number,
+  theme?: ResolvedTheme,
+): Tray {
+  let icon: NativeImage;
 
-  // Create a small icon — on macOS use a 16x16 template
-  let icon: nativeImage;
-  try {
-    icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-    if (process.platform === 'darwin') {
-      icon.setTemplateImage(true);
+  if (theme) {
+    icon = createTrayIcon(theme);
+  } else {
+    // Legacy fallback: use icon.png from resources
+    const iconPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'icon.png')
+      : path.join(__dirname, '..', '..', 'resources', 'icon.png');
+
+    try {
+      icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+      if (process.platform === 'darwin') {
+        icon.setTemplateImage(true);
+      }
+    } catch {
+      icon = nativeImage.createEmpty();
     }
-  } catch {
-    // Fallback to empty icon if resource not found
-    icon = nativeImage.createEmpty();
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Reactory Desktop');
+  tray.setToolTip(theme?.appName ?? 'Reactory Desktop');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Reactory',
+      label: `Show ${theme?.appName ?? 'Reactory'}`,
       click: () => {
         mainWindow.show();
         mainWindow.focus();

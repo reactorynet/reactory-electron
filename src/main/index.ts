@@ -21,6 +21,8 @@ import { createTray } from './tray';
 import { setupAutoUpdater } from './updater';
 import { resolveEnv, PATHS } from './env';
 import { buildMenu } from './menu';
+import { resolveTheme, createAppIcon } from './theme';
+import type { ResolvedTheme } from './theme';
 
 // ── Logging ────────────────────────────────────────────────
 log.initialize();
@@ -36,6 +38,7 @@ let mainWindow: BrowserWindow | null = null;
 let mongoManager: MongoManager | null = null;
 let serverManager: ReactoryServerManager | null = null;
 let clientServer: ClientServer | null = null;
+let currentTheme: ResolvedTheme | null = null;
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -44,13 +47,16 @@ let clientServer: ClientServer | null = null;
  * In dev mode, we resolve from existing workspace env vars.
  * In packaged mode, everything lives under process.resourcesPath.
  */
-const DEV_RESOURCE_MAP: Record<string, string | undefined> = {
-  server: process.env.REACTORY_SERVER,
-  'reactory-data': process.env.REACTORY_DATA,
-  client: process.env.REACTORY_CLIENT
-    ? path.join(process.env.REACTORY_CLIENT, 'build', 'reactory', 'electron')
-    : undefined,
-};
+function getDevResourceMap(): Record<string, string | undefined> {
+  const clientConfigId = store.get('clientConfigId');
+  return {
+    server: process.env.REACTORY_SERVER,
+    'reactory-data': process.env.REACTORY_DATA,
+    client: process.env.REACTORY_CLIENT
+      ? path.join(process.env.REACTORY_CLIENT, 'build', clientConfigId, 'electron')
+      : undefined,
+  };
+}
 
 function getResourcePath(...segments: string[]): string {
   if (app.isPackaged) {
@@ -59,7 +65,8 @@ function getResourcePath(...segments: string[]): string {
 
   // Dev mode: check if the first segment maps to a known workspace path
   const [first, ...rest] = segments;
-  const mapped = DEV_RESOURCE_MAP[first];
+  const devMap = getDevResourceMap();
+  const mapped = devMap[first];
   if (mapped) {
     return rest.length > 0 ? path.join(mapped, ...rest) : mapped;
   }
@@ -75,6 +82,9 @@ function getResourcePath(...segments: string[]): string {
 
 function createMainWindow(port: number): BrowserWindow {
   const savedBounds = store.get('windowBounds');
+  const title = currentTheme
+    ? `${currentTheme.appName} Desktop`
+    : 'Reactory Desktop';
 
   const win = new BrowserWindow({
     width: savedBounds?.width ?? 1400,
@@ -82,7 +92,7 @@ function createMainWindow(port: number): BrowserWindow {
     x: savedBounds?.x,
     y: savedBounds?.y,
     show: false,
-    title: 'Reactory Desktop',
+    title,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -91,6 +101,12 @@ function createMainWindow(port: number): BrowserWindow {
       devTools: true,
     },
   });
+
+  // Set the dock/taskbar icon from the theme if available
+  if (currentTheme) {
+    const appIcon = createAppIcon(currentTheme);
+    if (appIcon) win.setIcon(appIcon);
+  }
 
   const url = `http://localhost:${port}`;
   log.info(`Loading client from ${url}`);
@@ -118,7 +134,16 @@ function createMainWindow(port: number): BrowserWindow {
 
 async function boot(): Promise<void> {
   log.info('Boot sequence starting…');
-  const splash = createSplashWindow();
+
+  // ── Step 0: Resolve theme ──
+  const serverConfigId = store.get('serverConfigId');
+  const clientConfigId = store.get('clientConfigId');
+  const themeId = store.get('themeId');
+  log.info(`Server config: ${serverConfigId}, Client config: ${clientConfigId}, Theme: ${themeId}`);
+  currentTheme = resolveTheme(themeId, clientConfigId);
+  log.info(`Theme resolved: "${currentTheme.id}" — ${currentTheme.appName} (${currentTheme.colors.primary})`);
+
+  const splash = createSplashWindow({ theme: currentTheme });
 
   try {
     // ── Step 1: MongoDB ──
@@ -153,6 +178,8 @@ async function boot(): Promise<void> {
       clientBuildPath: getResourcePath('client'),
       isPackaged: app.isPackaged,
       serverPath,
+      serverConfigId,
+      clientConfigId,
     });
 
     // ── Step 3: Start Express API Server ──
@@ -180,7 +207,7 @@ async function boot(): Promise<void> {
     mainWindow = createMainWindow(clientPort);
 
     // ── Step 6: System tray + auto-update ──
-    createTray(mainWindow, apiPort);
+    createTray(mainWindow, apiPort, currentTheme);
     if (app.isPackaged) {
       setupAutoUpdater(mainWindow);
     }

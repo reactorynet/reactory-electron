@@ -18,6 +18,10 @@ export interface EnvOptions {
   clientBuildPath: string;
   isPackaged: boolean;
   serverPath?: string;
+  /** Server configuration key (e.g. "reactory") — determines which .env file to load */
+  serverConfigId?: string;
+  /** Client configuration key (e.g. "reactory") — used for REACTORY_CLIENT_KEY */
+  clientConfigId?: string;
 }
 
 /**
@@ -80,13 +84,18 @@ function readDotEnv(filePath: string): Record<string, string> {
  * In packaged mode: builds the full env from scratch.
  */
 export function resolveEnv(opts: EnvOptions): Record<string, string> {
-  const { mongoUri, apiPort, clientPort, dataRoot, clientBuildPath, isPackaged, serverPath } = opts;
+  const {
+    mongoUri, apiPort, clientPort, dataRoot, clientBuildPath,
+    isPackaged, serverPath,
+    serverConfigId = 'reactory',
+    clientConfigId = 'reactory',
+  } = opts;
   const userDataPath = PATHS.userData || app.getPath('userData');
   const secret = getOrCreateSecret(userDataPath);
 
   // ── Dev mode: inherit from existing .env.local + overlay ──
   if (!isPackaged && serverPath) {
-    const envFile = path.join(serverPath, 'config', 'reactory', '.env.local');
+    const envFile = path.join(serverPath, 'config', serverConfigId, '.env.local');
     const baseEnv = readDotEnv(envFile);
 
     // Parse the embedded mongo URI for individual connection params
@@ -180,7 +189,7 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     ].join(','),
 
     // ── Authentication ──
-    REACTORY_CLIENT_KEY: 'reactory',
+    REACTORY_CLIENT_KEY: clientConfigId,
     REACTORY_CLIENT_PWD: '',
     REACTORY_APPLICATION_EMAIL: 'admin@reactory.localhost',
     REACTORY_APPLICATION_USERNAME: 'admin',
@@ -188,11 +197,11 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     SYSTEM_USER_ID: 'admin@reactory.localhost',
 
     // ── Modules ──
-    MODULES_ENABLED: 'enabled-reactory',
-    CLIENTS_ENABLED: 'enabled-clients.reactory',
+    MODULES_ENABLED: `enabled-${serverConfigId}`,
+    CLIENTS_ENABLED: `enabled-clients.${serverConfigId}`,
 
     // ── i18n ──
-    I18N_NS: 'reactory',
+    I18N_NS: serverConfigId,
 
     // ── Optional services (disabled for desktop) ──
     USE_REDIS_CACHE: 'false',

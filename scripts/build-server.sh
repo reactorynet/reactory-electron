@@ -16,6 +16,8 @@ BUILD_DIR="$PROJECT_DIR/build/server"
 
 # Resolve the Express server path
 REACTORY_SERVER="${REACTORY_SERVER:-$(dirname "$PROJECT_DIR")/reactory-express-server}"
+REACTORY_CONFIG_ID="${REACTORY_CONFIG_ID:-reactory}"
+REACTORY_ENV_ID="${REACTORY_ENV_ID:-local}"
 
 if [ ! -d "$REACTORY_SERVER" ]; then
   echo "❌ ERROR: Reactory Express Server not found at $REACTORY_SERVER"
@@ -25,6 +27,8 @@ fi
 
 echo "══════════════════════════════════════════════════════════"
 echo "  Building Reactory Express Server for Electron"
+echo "  Config: $REACTORY_CONFIG_ID"
+echo "  Env:    $REACTORY_ENV_ID"
 echo "  Source: $REACTORY_SERVER"
 echo "  Output: $BUILD_DIR"
 echo "══════════════════════════════════════════════════════════"
@@ -42,7 +46,7 @@ pushd "$REACTORY_SERVER" > /dev/null
 
 # The generate script produces src/modules/__index.ts and client config imports
 if [ -f "bin/generate.sh" ]; then
-  bash bin/generate.sh reactory local 2>/dev/null || {
+  bash bin/generate.sh "$REACTORY_CONFIG_ID" "$REACTORY_ENV_ID" 2>/dev/null || {
     echo "⚠️  generate.sh failed — trying direct generation…"
     NODE_PATH=./src npx babel-node ./src/utils/code/index.ts \
       --presets @babel/env --extensions ".js,.ts" 2>/dev/null || true
