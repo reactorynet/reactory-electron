@@ -38,7 +38,7 @@ echo "🧹 Cleaning previous client build…"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-# ── Step 2: Ensure Electron env file exists ──
+# ── Step 2: Create Electron env file ──
 ELECTRON_ENV_DIR="$REACTORY_CLIENT/config/env/$REACTORY_CONFIG_ID"
 ELECTRON_ENV_FILE="$ELECTRON_ENV_DIR/.env.electron"
 
@@ -52,10 +52,14 @@ LOCAL_ENV_FILE="$ELECTRON_ENV_DIR/.env.local"
 
 if [ -f "$LOCAL_ENV_FILE" ]; then
   PRIMARY_COLOR=$(grep "^REACT_APP_THEME_PRIMARY=" "$LOCAL_ENV_FILE" | cut -d= -f2 | tr -d "'" | tr -d '"' || echo "#f95e20")
+  SECONDARY_COLOR=$(grep "^REACT_APP_THEME_SECONDARY=" "$LOCAL_ENV_FILE" | cut -d= -f2 | tr -d "'" | tr -d '"' || echo "#424242")
   BG_COLOR=$(grep "^REACT_APP_THEME_BG=" "$LOCAL_ENV_FILE" | cut -d= -f2 | tr -d "'" | tr -d '"' || echo "#424242")
   CLIENT_KEY=$(grep "^REACT_APP_CLIENT_KEY=" "$LOCAL_ENV_FILE" | cut -d= -f2 | tr -d "'" | tr -d '"' || echo "$REACTORY_CONFIG_ID")
   CLIENT_PASSWORD=$(grep "^REACT_APP_CLIENT_PASSWORD=" "$LOCAL_ENV_FILE" | cut -d= -f2 | tr -d "'" | tr -d '"' || true)
 fi
+
+# Capitalize config ID (portable — works with Bash 3.x on macOS)
+APP_TITLE="$(echo "$REACTORY_CONFIG_ID" | awk '{print toupper(substr($0,1,1)) substr($0,2)}') Desktop"
 
 echo ""
 echo "📝 Creating Electron environment file…"
@@ -70,10 +74,10 @@ REACT_APP_CLIENT_PASSWORD=${CLIENT_PASSWORD}
 REACT_APP_TITLE=${REACTORY_CONFIG_ID}:${REACTORY_CONFIG_ID}.application.title
 REACT_APP_THEME=${REACTORY_THEME_ID}
 REACT_APP_THEME_PRIMARY=${PRIMARY_COLOR}
-REACT_APP_THEME_SECONDARY=${BG_COLOR}
+REACT_APP_THEME_SECONDARY=${SECONDARY_COLOR}
 REACT_APP_THEME_BG=${BG_COLOR}
 REACT_APP_SHORTNAME=${REACTORY_CONFIG_ID}:${REACTORY_CONFIG_ID}.application.shortName
-REACT_APP_APP_TITLE=${REACTORY_CONFIG_ID^} Desktop
+REACT_APP_APP_TITLE=${APP_TITLE}
 REACT_APP_DISABLE_SW=true
 
 # Build settings

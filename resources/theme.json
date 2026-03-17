@@ -1,0 +1,11 @@
+{
+  "id": "reactory",
+  "configId": "reactory",
+  "colors": {
+    "primary": "#f95e20",
+    "background": "#1a1a2e",
+    "secondary": "#424242",
+    "textColor": "#e0e0e0",
+    "mutedColor": "#7788aa"
+  }
+}

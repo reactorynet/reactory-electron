@@ -62,20 +62,23 @@ fi
 echo "📎 Preparing Linux icon set…"
 mkdir -p "$ICONS_DIR"
 
-declare -A ICON_SIZE_MAP=(
-  ["icons-16.png"]="16x16.png"
-  ["icons-32.png"]="32x32.png"
-  ["icons-44.png"]="48x48.png"
-  ["icons-64.png"]="64x64.png"
-  ["icons-144.png"]="128x128.png"
-  ["icons-192.png"]="256x256.png"
-  ["icons-512.png"]="512x512.png"
-)
+# Portable icon-size mapping (no associative arrays — works with Bash 3.x)
+ICON_PAIRS="
+icons-16.png:16x16.png
+icons-32.png:32x32.png
+icons-44.png:48x48.png
+icons-64.png:64x64.png
+icons-144.png:128x128.png
+icons-192.png:256x256.png
+icons-512.png:512x512.png
+"
 
-for src_name in "${!ICON_SIZE_MAP[@]}"; do
+for pair in $ICON_PAIRS; do
+  src_name="${pair%%:*}"
+  dst_name="${pair##*:}"
   if [ -f "$IMAGES_DIR/$src_name" ]; then
-    cp "$IMAGES_DIR/$src_name" "$ICONS_DIR/${ICON_SIZE_MAP[$src_name]}"
-    echo "   ${ICON_SIZE_MAP[$src_name]} ← $src_name"
+    cp "$IMAGES_DIR/$src_name" "$ICONS_DIR/$dst_name"
+    echo "   $dst_name ← $src_name"
   fi
 done
 
@@ -93,10 +96,12 @@ if command -v iconutil &>/dev/null && [ -f "$IMAGES_DIR/icons-512.png" ]; then
   mkdir -p "$ICONSET_DIR"
 
   # Copy available sizes into the iconset (macOS expects specific naming)
-  for src_name in "${!ICON_SIZE_MAP[@]}"; do
+  for pair in $ICON_PAIRS; do
+    src_name="${pair%%:*}"
+    dst_name="${pair##*:}"
     if [ -f "$IMAGES_DIR/$src_name" ]; then
       # Map to macOS iconset naming: icon_16x16.png, icon_32x32.png, etc.
-      dim="${ICON_SIZE_MAP[$src_name]%.png}"  # e.g., "16x16"
+      dim="${dst_name%.png}"  # e.g., "16x16"
       cp "$IMAGES_DIR/$src_name" "$ICONSET_DIR/icon_${dim}.png"
     fi
   done
