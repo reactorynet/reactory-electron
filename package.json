@@ -22,21 +22,22 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9",
+    "dotenv": "^16.4.7",
     "electron-log": "^5.2.4",
-    "mongodb-memory-server-core": "^10.4.0",
+    "electron-updater": "^6.3.9",
     "get-port": "^5.1.1",
-    "dotenv": "^16.4.7"
+    "mongodb-memory-server-core": "^10.4.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.10",
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
     "tsup": "^8.3.6",
     "tsx": "^4.19.2",
-    "typescript": "^5.5.3",
-    "@types/node": "^20.14.10"
+    "typescript": "^5.5.3"
   },
   "build": {
     "extends": "electron-builder.yml"
-  }
+  },
+  "packageManager": "yarn@4.15.0+sha512.07ec708ac11e2eaa4ea2b04cfbb272812f7e74a753f1595eaef4486c663a98306a30cca3e6fc40f7a0b168dcfb3a2490b6a5e0501e20fb69cc36f563dd161c53"
 }
