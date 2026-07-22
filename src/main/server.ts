@@ -33,12 +33,23 @@ export class ReactoryServerManager {
   async start(): Promise<void> {
     const { serverPath, env } = this.opts;
 
-    // Determine entry point
+    // Determine entry point. Prefer the Electron-specific wrapper that
+    // scripts/build-server.sh generates (electron-entry.js) — it sends the
+    // IPC 'ready' signal this class waits on below and handles the
+    // 'shutdown' message from stop(). The plain compiled index.js (compiled
+    // from the server's own src/index.ts) does neither, so falling through
+    // to it here would silently degrade startup detection to the stdout
+    // text-match fallback and drop graceful IPC shutdown entirely.
+    const electronEntry = path.join(serverPath, 'electron-entry.js');
     const compiledEntry = path.join(serverPath, 'index.js');
     const srcEntry = path.join(serverPath, 'src', 'index.ts');
 
-    if (fs.existsSync(compiledEntry)) {
-      // ── Production: run compiled JS via Node fork ──
+    if (fs.existsSync(electronEntry)) {
+      // ── Production: run compiled JS via Node fork, using the Electron entry ──
+      log.info(`Starting compiled server via Electron entry point ${electronEntry}`);
+      return this.startCompiled(electronEntry, env);
+    } else if (fs.existsSync(compiledEntry)) {
+      // ── Production fallback: no electron-entry.js — run the plain compiled JS ──
       log.info(`Starting compiled server from ${compiledEntry}`);
       return this.startCompiled(compiledEntry, env);
     } else if (fs.existsSync(srcEntry)) {

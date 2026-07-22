@@ -132,23 +132,40 @@ echo ""
 echo "📥 Installing production dependencies…"
 cd "$BUILD_DIR"
 
-# Create a trimmed package.json with only production dependencies
+# Create a trimmed package.json with only production dependencies.
+# packageManager is carried over so `corepack enable` resolves the same
+# Yarn (Berry) version the main project is pinned to, rather than whatever
+# corepack would otherwise default to.
 node -e "
   const pkg = require('$REACTORY_SERVER/package.json');
   const trimmed = {
     name: pkg.name,
     version: pkg.version,
     dependencies: pkg.dependencies,
-    resolutions: pkg.resolutions || {}
+    resolutions: pkg.resolutions || {},
+    packageManager: pkg.packageManager
   };
   require('fs').writeFileSync('./package.json', JSON.stringify(trimmed, null, 2));
 "
 
-# Note: In CI, you'd run yarn install --production here.
-# For local dev, we skip this step (it takes a while) and rely on the
-# server's own node_modules via NODE_PATH.
-echo "⚠️  Skipping production install for local dev. Run this in CI:"
-echo "    cd $BUILD_DIR && yarn install --production --frozen-lockfile"
+# This trimmed package.json is a standalone single-package manifest (no
+# "workspaces" field), so plain `yarn install` only installs what's listed
+# under "dependencies" above — there are no devDependencies to filter out,
+# unlike the main monorepo project.
+echo "📥 Installing production dependencies via Yarn…"
+corepack enable
+yarn install
+
+# ── Step 6b: Rebuild native modules against Electron's Node ABI ──
+# The server is run via Electron's fork() (see src/main/server.ts), so it
+# executes under Electron's bundled Node/V8 ABI, not the system Node that
+# just ran `yarn install` above. Native addons (e.g. `canvas`, pulled in via
+# chartjs-node-canvas) must be rebuilt against that ABI or they fail to load
+# at runtime with an ABI-mismatch error.
+echo ""
+echo "🔧 Rebuilding native modules against Electron's ABI…"
+ELECTRON_VERSION=$(node -p "require('$PROJECT_DIR/node_modules/electron/package.json').version")
+(cd "$PROJECT_DIR" && npx @electron/rebuild --version "$ELECTRON_VERSION" --module-dir "$BUILD_DIR" --force)
 
 # ── Step 7: Add IPC signal support ──
 echo ""

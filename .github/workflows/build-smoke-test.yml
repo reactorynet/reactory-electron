@@ -1,0 +1,93 @@
+name: Build smoke test
+
+# Exercises the parts of the desktop build that had silently rotted (July
+# 2026 audit): the main-process TypeScript, the MongoDB binary fetch that
+# electron-builder's packaging step hard-requires, and the full server-
+# embedding pipeline (scripts/build-server.sh) — which used to skip
+# installing the embedded server's production dependencies entirely and
+# never rebuilt its native modules against Electron's Node ABI.
+#
+# Does NOT run `yarn dist` (full electron-builder packaging): that needs
+# code-signing credentials and downloads large per-platform Electron
+# binaries, which isn't a fit for a routine smoke test. build:server is the
+# part that was actually broken and untested — that's what this covers.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".github/workflows/build-smoke-test.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".github/workflows/build-smoke-test.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Type-check / bundle main process
+        run: yarn build:main
+
+      - name: Fetch MongoDB binary
+        run: yarn fetch:mongodb
+
+  build-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: reactory-electron
+
+      # scripts/build-server.sh resolves the server checkout via
+      # $REACTORY_SERVER, defaulting to a sibling directory of this repo —
+      # reproduce that layout in CI.
+      - uses: actions/checkout@v4
+        with:
+          repository: reactorynet/reactory-express-server
+          submodules: true
+          path: reactory-express-server
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "reactory-electron/.nvmrc"
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Install electron dependencies
+        working-directory: reactory-electron
+        run: yarn install --immutable
+
+      - name: Install native-module build tools
+        # node-canvas (pulled in via chartjs-node-canvas) needs these to
+        # compile on Linux — mirrors reactory-express-server's own Dockerfile.
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential libcairo2-dev libjpeg-dev libgif-dev libpango1.0-dev librsvg2-dev
+
+      - name: Build embedded server
+        working-directory: reactory-electron
+        env:
+          REACTORY_SERVER: ${{ github.workspace }}/reactory-express-server
+        run: bash scripts/build-server.sh

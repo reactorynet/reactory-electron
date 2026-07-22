@@ -15,10 +15,11 @@
     "build:data": "bash scripts/bundle-data.sh",
     "start": "electron dist/main/index.js",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux",
+    "fetch:mongodb": "bash scripts/fetch-mongodb-binary.sh",
+    "dist": "yarn fetch:mongodb && electron-builder",
+    "dist:mac": "yarn fetch:mongodb && electron-builder --mac",
+    "dist:win": "yarn fetch:mongodb && electron-builder --win",
+    "dist:linux": "yarn fetch:mongodb && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "mongodb-memory-server-core": "^10.4.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "@types/node": "^20.14.10",
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
