@@ -127,6 +127,11 @@ find src -name "*.proto" | while read -r proto; do
   cp "$proto" "$dest"
 done
 
+# Copy lib folder if present (local tarball dependencies)
+if [ -d "lib" ]; then
+  cp -R lib "$BUILD_DIR/"
+fi
+
 # ── Step 6: Install production dependencies ──
 echo ""
 echo "📥 Installing production dependencies…"
@@ -146,6 +151,7 @@ node -e "
     packageManager: pkg.packageManager
   };
   require('fs').writeFileSync('./package.json', JSON.stringify(trimmed, null, 2));
+  require('fs').writeFileSync('./yarn.lock', '');
 "
 
 # This trimmed package.json is a standalone single-package manifest (no
