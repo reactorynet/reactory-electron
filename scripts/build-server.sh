@@ -95,6 +95,20 @@ if command -v find &> /dev/null; then
       sed -i '' "s|@reactory/server-modules/|${rel}/|g" "$file" 2>/dev/null || \
       sed -i "s|@reactory/server-modules/|${rel}/|g" "$file" 2>/dev/null || true
     fi
+
+    # bare modules/* → ./modules/*
+    if grep -q "['\"]modules/" "$file" 2>/dev/null; then
+      rel=$(python3 -c "import os.path; print(os.path.relpath('./modules', '$dir'))" 2>/dev/null || echo "./modules")
+      sed -i '' "s|['\"]modules/|'${rel}/|g" "$file" 2>/dev/null || \
+      sed -i "s|['\"]modules/|'${rel}/|g" "$file" 2>/dev/null || true
+    fi
+
+    # bare utils/* → ./utils/*
+    if grep -q "['\"]utils/" "$file" 2>/dev/null; then
+      rel=$(python3 -c "import os.path; print(os.path.relpath('./utils', '$dir'))" 2>/dev/null || echo "./utils")
+      sed -i '' "s|['\"]utils/|'${rel}/|g" "$file" 2>/dev/null || \
+      sed -i "s|['\"]utils/|'${rel}/|g" "$file" 2>/dev/null || true
+    fi
   done
 fi
 
@@ -125,6 +139,22 @@ find src -name "*.proto" | while read -r proto; do
   dest="$BUILD_DIR/${proto#src/}"
   mkdir -p "$(dirname "$dest")"
   cp "$proto" "$dest"
+done
+
+# Copy raw form widget source files (.tsx / .jsx / .ts) loaded at runtime via fileAsString/ingest
+find src/modules -path "*/forms/*" | while read -r formfile; do
+  if [ -f "$formfile" ]; then
+    dest="$BUILD_DIR/${formfile#src/}"
+    mkdir -p "$(dirname "$dest")"
+    cp "$formfile" "$dest"
+  fi
+done
+
+# Copy YAML and JSON definition files under src
+find src -name "*.yaml" -o -name "*.yml" -o -name "*.json" | while read -r yml; do
+  dest="$BUILD_DIR/${yml#src/}"
+  mkdir -p "$(dirname "$dest")"
+  cp "$yml" "$dest"
 done
 
 # Copy lib folder if present (local tarball dependencies)
@@ -171,7 +201,7 @@ yarn install
 echo ""
 echo "🔧 Rebuilding native modules against Electron's ABI…"
 ELECTRON_VERSION=$(node -p "require('$PROJECT_DIR/node_modules/electron/package.json').version")
-(cd "$PROJECT_DIR" && npx @electron/rebuild --version "$ELECTRON_VERSION" --module-dir "$BUILD_DIR" --force)
+(cd "$PROJECT_DIR" && npx @electron/rebuild --version "$ELECTRON_VERSION" --module-dir "$BUILD_DIR" --only canvas,sqlite3,node-pty || true)
 
 # ── Step 7: Add IPC signal support ──
 echo ""

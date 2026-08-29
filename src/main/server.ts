@@ -104,8 +104,12 @@ export class ReactoryServerManager {
       this.serverProcess.on('exit', (code, signal) => {
         clearTimeout(timeout);
         log.info(`Server process exited code=${code} signal=${signal}`);
+        const wasRunning = this.running;
         this.running = false;
         this.serverProcess = null;
+        if (!wasRunning) {
+          reject(new Error(`Server process exited unexpectedly with code ${code}`));
+        }
       });
 
       // The server sends a 'ready' message when it's listening

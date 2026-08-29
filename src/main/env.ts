@@ -160,6 +160,7 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     // ── Node ──
     NODE_ENV: 'production',
     APPLICATION_ROOT: '.',
+    NODE_PATH: serverPath || '.',
 
     // ── Database ──
     MONGOOSE: mongoUri,
@@ -189,12 +190,43 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     ].join(','),
 
     // ── Authentication ──
+    REACTORY_APPLICATION_KEY: serverConfigId,
+    REACTORY_APPLICATION_USERNAME: 'reactory',
+    REACTORY_APPLICATION_EMAIL: 'reactory@reactory.net',
+    REACTORY_APPLICATION_PASSWORD: 'bYGgEjp9U9BBi3R3RPx8DAjm+8thTKdpymngp2kU+50=',
+    REACTORY_APPLICATION_URL: `http://localhost:${clientPort}`,
+    SYSTEM_USER_ID: 'reactory@reactory.net',
     REACTORY_CLIENT_KEY: clientConfigId,
-    REACTORY_CLIENT_PWD: '',
-    REACTORY_APPLICATION_EMAIL: 'admin@reactory.localhost',
-    REACTORY_APPLICATION_USERNAME: 'admin',
-    REACTORY_APPLICATION_PASSWORD: '',
-    SYSTEM_USER_ID: 'admin@reactory.localhost',
+    REACTORY_CLIENT_PWD: 'bYGgEjp9U9BBi3R3RPx8DAjm+8thTKdpymngp2kU+50=',
+
+    REACTOR_APPLICATION_EMAIL: 'reactor@reactor.local',
+    REACTOR_APPLICATION_USERNAME: 'reactor',
+    REACTOR_APPLICATION_KEY: 'reactor',
+    REACTOR_APPLICATION_PASSWORD: 'reactorpassword',
+    REACTOR_APPLICATION_URL: 'http://localhost:3002',
+    REACTOR_APPLICATION_PORT: '3002',
+
+    REACTOR_ANONUSER_EMAIL: 'anon@reactor.local',
+    REACTOR_ANONUSER_USERNAME: 'anon',
+    REACTOR_ANONUSER_PASSWORD: 'anonymouspassword',
+
+    BOOKTUTOR_APPLICATION_EMAIL: 'application@booktutor.local',
+    BOOKTUTOR_APPLICATION_USERNAME: 'booktutor',
+    BOOKTUTOR_APPLICATION_KEY: 'booktutor',
+    BOOKTUTOR_APPLICATION_PASSWORD: 'booktutorpassword',
+    BOOKTUTOR_APPLICATION_URL: 'http://localhost:3004',
+    BOOKTUTOR_APPLICATION_PORT: '3004',
+
+    COMPUTE_PLANNER_APPLICATION_EMAIL: 'application@computeplanner.local',
+    COMPUTE_PLANNER_APPLICATION_USERNAME: 'computeplanner',
+    COMPUTE_PLANNER_APPLICATION_KEY: 'compute-planner',
+    COMPUTE_PLANNER_APPLICATION_PASSWORD: 'computeplannerpassword',
+    COMPUTE_PLANNER_APPLICATION_URL: 'http://localhost:3005',
+    COMPUTE_PLANNER_APPLICATION_PORT: '3005',
+
+    COMPUTE_PLANNER_ANONUSER_EMAIL: 'anon@reactor.local',
+    COMPUTE_PLANNER_ANONUSER_USERNAME: 'anon',
+    COMPUTE_PLANNER_ANONUSER_PASSWORD: 'anonymouspassword',
 
     // ── Modules ──
     MODULES_ENABLED: `enabled-${serverConfigId}`,
