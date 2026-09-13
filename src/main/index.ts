@@ -183,10 +183,17 @@ async function boot(): Promise<void> {
     });
 
     // ── Step 3: Start Express API Server ──
+    // The compiled server is launched through its own `bin/run.sh --bun`
+    // launcher so the desktop app and a standalone deployment share one boot
+    // path (Bun runtime). Set REACTORY_SERVER_RUNTIME=node to force the
+    // Electron Node fork instead.
     splash.webContents.send('splash:status', 'Starting API server…');
     serverManager = new ReactoryServerManager({
       serverPath,
       env,
+      runtime: (process.env.REACTORY_SERVER_RUNTIME as 'bun' | 'node' | undefined) || 'bun',
+      serverConfigId,
+      envId: app.isPackaged ? 'production' : 'local',
     });
     await serverManager.start();
     log.info(`Reactory API server running on port ${apiPort}`);

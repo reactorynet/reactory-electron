@@ -129,6 +129,13 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
 
       // Data paths (use existing workspace paths in dev)
       APP_DATA_ROOT: dataRoot,
+      // The Reactory server reads these directly (e.g. workflow YAML loading
+      // joins REACTORY_DATA). Point them at the bundled resources so the
+      // desktop build is self-contained and does not depend on the shell env.
+      REACTORY_DATA: dataRoot,
+      REACTORY_HOME: path.dirname(dataRoot),
+      REACTORY_SERVER: serverPath,
+      REACTORY_PLUGINS: path.join(dataRoot, 'plugins'),
 
       // Client serving — the PWA client runs on its own port
       ELECTRON_CLIENT_BUILD_PATH: clientBuildPath,
@@ -179,6 +186,12 @@ export function resolveEnv(opts: EnvOptions): Record<string, string> {
     // ── Data paths ──
     APP_DATA_ROOT: dataRoot,
     APP_SYSTEM_FONTS: path.join(dataRoot, 'fonts'),
+    // The server reads these directly (workflow YAML loading joins
+    // REACTORY_DATA); keep the packaged app self-contained.
+    REACTORY_DATA: dataRoot,
+    REACTORY_HOME: path.dirname(dataRoot),
+    REACTORY_SERVER: serverPath || path.join(path.dirname(dataRoot), 'server'),
+    REACTORY_PLUGINS: path.join(dataRoot, 'plugins'),
 
     // ── Client serving ──
     ELECTRON_CLIENT_BUILD_PATH: clientBuildPath,

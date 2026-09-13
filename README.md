@@ -107,9 +107,35 @@ yarn build --all-fonts  # Include all 370MB of fonts
 | Step | Script | Output |
 |------|--------|--------|
 | Electron main process | `yarn build:main` | `dist/main/` |
-| Express server (Babel) | `yarn build:server` | `build/server/` |
+| Express server (Babel) | `yarn build:server` | `build/server/app/` (code) + `build/server/{bin,config,node_modules}` |
 | PWA client (Webpack) | `yarn build:client` | `build/client/` |
 | Data bundle | `yarn build:data` | `build/reactory-data/` |
+
+The compiled server is deliberately nested under `build/server/app/`. The
+server resolves its enabled-module manifest from `<cwd>/app/modules` (or
+`<cwd>/src/modules`), so a flattened layout fails at boot with
+`The module specification file () does not exist`.
+
+## Server Runtime (Bun)
+
+The desktop app launches its embedded Express server through the server's own
+launcher — `bin/run.sh --bun` — rather than forking the entry point directly.
+This keeps the desktop boot path identical to a standalone deployment
+(runtime selection, entry resolution, environment loading) and runs the
+platform on Bun.
+
+- `scripts/build-server.sh` bundles `bin/run.sh` + `bin/shared/` and the
+  per-config `.env` files into `build/server/`, writes the Electron entry at
+  `build/server/app/index.js`, and keeps `build/server/electron-entry.js` as a
+  shim for the Node-fork fallback.
+- `src/main/server.ts` spawns `/bin/bash <serverPath>/bin/run.sh --bun
+  <config> <env>` (detached process group; graceful SIGTERM/SIGKILL reap on
+  quit) and watches stdout for the readiness marker.
+- `REACTORY_RUNTIME` stays `electron` (the server keys its Electron
+  integration off it); the JS runtime is selected with `--bun`/`USE_BUN=true`.
+
+Set `REACTORY_SERVER_RUNTIME=node` to force the Node fork / Electron-ABI path
+instead of Bun.
 
 ## Project Structure
 
@@ -199,6 +225,7 @@ Configure the `publish` section in `electron-builder.yml` with your update serve
 | `REACTORY_SERVER` | `../reactory-express-server` | Path to Express server |
 | `REACTORY_CLIENT` | `../reactory-pwa-client` | Path to PWA client |
 | `REACTORY_DATA` | `../reactory-data` | Path to data directory |
+| `REACTORY_SERVER_RUNTIME` | `bun` | Embedded server runtime: `bun` (via `bin/run.sh --bun`) or `node` (Electron fork) |
 
 ## Estimated Bundle Sizes
 
