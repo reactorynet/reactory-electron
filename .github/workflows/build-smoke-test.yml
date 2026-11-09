@@ -34,7 +34,7 @@ jobs:
   build-main:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -55,14 +55,14 @@ jobs:
   build-server:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: reactory-electron
 
       # scripts/build-server.sh resolves the server checkout via
       # $REACTORY_SERVER, defaulting to a sibling directory of this repo —
       # reproduce that layout in CI.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: reactorynet/reactory-express-server
           submodules: true
